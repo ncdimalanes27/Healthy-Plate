@@ -5,7 +5,7 @@ import {
   LineChart, Line, AreaChart, Area, XAxis, YAxis, 
   CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar 
 } from 'recharts';
-import { Activity, Scale, Droplets, Heart, Save } from 'lucide-react';
+import { Activity, Scale, Droplets, Save } from 'lucide-react';
 
 export default function HealthMonitoring({ profile }: { profile: Profile }) {
   const [logs, setLogs] = useState<DailyLog[]>([]);

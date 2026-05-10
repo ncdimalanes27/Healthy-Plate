@@ -1,5 +1,4 @@
-import React, { useEffect, useState } from 'react';
-import { Activity, Target, Scale, Droplets, Zap } from 'lucide-react';
+import { Activity, Scale, Droplets, Zap } from 'lucide-react';
 import { calculateBMI, calculateTargetCalories } from '../utils/calculations';
 import type { Profile, DailyLog } from '../types';
 import { supabase } from '../lib/supabase';

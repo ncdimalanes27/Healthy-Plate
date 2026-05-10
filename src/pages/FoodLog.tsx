@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { supabaseService } from '../lib/supabaseService';
 import { foodCategories } from '../data/foods';
 import type { Food, Profile } from '../types';
-import { Search, Plus, Utensils, X } from 'lucide-react';
+import { Search, Plus } from 'lucide-react';
 
 export default function FoodLog({ profile }: { profile: Profile }) {
   const [foods, setFoods] = useState<Food[]>([]);

@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, User, Utensils, Activity, Settings, 
-  LogOut, Menu, X, ClipboardList, TrendingUp, MessageSquare
+  LogOut, ClipboardList, TrendingUp, MessageSquare
 } from 'lucide-react';
 import type { Profile } from '../../types';
 

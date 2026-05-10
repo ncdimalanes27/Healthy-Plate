@@ -1,8 +1,7 @@
-import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { calculateBMI, calculateTargetCalories } from '../utils/calculations';
 import type { Profile, DailyLog } from '../types';
-import { TrendingUp, AlertTriangle, CheckCircle, Search, ArrowRight } from 'lucide-react';
+import { AlertTriangle, CheckCircle, ArrowRight } from 'lucide-react';
 
 interface PatientStats extends Profile {
   avgIntake: number;
