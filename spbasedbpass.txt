@@ -1,5 +1,0 @@
-N09851052543
-
-proj url: https://vpefaabhqjsajjjcncly.supabase.co
-
-an pub: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZwZWZhYWJocWpzYWpqamNuY2x5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzODgzMjgsImV4cCI6MjA5Mzk2NDMyOH0.SGnybx4yiYDFQzCmQkG33X6MDx5vqzlZBj1etTMvHA4
