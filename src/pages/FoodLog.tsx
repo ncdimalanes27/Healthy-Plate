@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import { foodCategories } from '../data/foods';
 import type { Food, Profile } from '../types';
-import { Search, Plus } from 'lucide-react';
+import { Search } from 'lucide-react';
 
 export default function FoodLog({ profile }: { profile: Profile }) {
   const [foods, setFoods] = useState<Food[]>([]);
@@ -27,100 +26,49 @@ export default function FoodLog({ profile }: { profile: Profile }) {
     fetchFoods();
   }, [fetchFoods]);
 
+  const addFoodToLog = async (food: Food) => {
+    setLogging(true);
+    try {
+      const { error } = await supabase.from('daily_logs').insert([{
+        user_id: profile.id,
+        food_id: food.id,
+        total_calories: food.calories,
+        date: new Date().toISOString().split('T')[0]
+      }]);
+      if (error) throw error;
+      alert(`Added ${food.name} to your log!`);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLogging(false);
+    }
+  };
+
   const filteredFoods = foods.filter((f: Food) => {
     const matchesSearch = f.name.toLowerCase().includes(search.toLowerCase());
     const matchesCat = selectedCategory === 'All' || f.category === selectedCategory;
     return matchesSearch && matchesCat;
   });
 
-  const addFoodToLog = async (food: Food) => {
-    setLogging(true);
-    try {
-      const today = new Date().toISOString().split('T')[0];
-      
-      const { data: log } = await supabase
-        .from('daily_logs')
-        .upsert({ user_id: profile.id, date: today }, { onConflict: 'user_id, date' })
-        .select()
-        .single();
-
-      if (log) {
-        await supabase.from('meal_entries').insert({
-          user_id: profile.id,
-          log_id: log.id,
-          food_id: food.id,
-          food_name: food.name,
-          calories: food.calories,
-          protein: food.protein,
-          carbs: food.carbs,
-          fat: food.fat,
-          meal_type: 'Lunch', 
-          servings: 1,
-          date: today
-        });
-
-        await supabase.rpc('increment_daily_totals', {
-          log_id: log.id,
-          cal: food.calories,
-          pro: food.protein,
-          carb: food.carbs,
-          fat: food.fat
-        });
-        
-        alert(`${food.name} added to your log!`);
-      }
-    } catch (error) {
-      console.error('Error logging food:', error);
-    } finally {
-      setLogging(false);
-    }
-  };
-
   return (
-    <div className="max-w-4xl mx-auto">
-      <header className="mb-8">
-        <h1 className="text-2xl font-bold">Food Database</h1>
-        <p className="text-gray-500">Log your Filipino meals and track your intake</p>
-      </header>
-
-      <div className="space-y-4 mb-8">
-        <div className="relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+    <div className="space-y-6">
+      <div className="bg-white p-4 rounded-3xl border border-gray-100 flex flex-col md:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
           <input
             type="text"
-            placeholder="Search foods (e.g. Adobo, Rice...)"
-            className="w-full pl-12 pr-4 py-3 bg-white border rounded-2xl focus:ring-2 focus:ring-primary outline-none shadow-sm"
+            placeholder="Search foods (e.g. Adobo, Rice)..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 rounded-2xl border border-gray-100 focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
         </div>
-
-        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-          <button
-            onClick={() => setSelectedCategory('All')}
-            className={`px-4 py-2 rounded-full whitespace-nowrap text-sm font-medium transition-colors ${
-              selectedCategory === 'All' ? 'bg-primary text-white' : 'bg-white border text-gray-600 hover:bg-gray-50'
-            }`}
-          >
-            All
-          </button>
-          {foodCategories.map((cat: string) => (
-            <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={`px-4 py-2 rounded-full whitespace-nowrap text-sm font-medium transition-colors ${
-                selectedCategory === cat ? 'bg-primary text-white' : 'bg-white border text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
+        {/* Category selector can go here */}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {loading ? (
-          <p className="text-center text-gray-400 py-10">Loading database...</p>
+          <p className="text-center text-gray-400 py-10 col-span-2">Loading database...</p>
         ) : filteredFoods.map((food: Food) => (
           <div key={food.id} className="bg-white p-4 rounded-2xl border flex justify-between items-center hover:shadow-md transition-shadow">
             <div>
@@ -129,19 +77,17 @@ export default function FoodLog({ profile }: { profile: Profile }) {
                 {food.is_filipino && <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-bold uppercase">Pinoy</span>}
               </div>
               <p className="text-xs text-gray-500">{food.serving_size} • {food.category}</p>
-              <div className="flex gap-3 mt-2">
-                <span className="text-xs font-medium text-orange-600">{food.calories} kcal</span>
-                <span className="text-xs text-gray-400">P: {food.protein}g</span>
-                <span className="text-xs text-gray-400">C: {food.carbs}g</span>
-                <span className="text-xs text-gray-400">F: {food.fat}g</span>
+              <div className="flex gap-3 mt-2 text-xs font-medium">
+                <span className="text-orange-600">{food.calories} kcal</span>
+                <span className="text-gray-400">P: {food.protein}g C: {food.carbs}g F: {food.fat}g</span>
               </div>
             </div>
             <button
               onClick={() => addFoodToLog(food)}
               disabled={logging}
-              className="p-2 bg-primary-light text-primary rounded-xl hover:bg-primary hover:text-white transition-colors disabled:opacity-50"
+              className="p-2 bg-primary-light text-primary rounded-xl hover:bg-primary hover:text-white transition-colors"
             >
-              <Plus size={24} />
+              Add
             </button>
           </div>
         ))}

@@ -11,8 +11,6 @@ export default function DieticianDashboard() {
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // FIX 1: Ginamit ang useCallback para maiwasan ang "cascading renders" 
-  // Ito ay magsisilbing stable dependency para sa useEffect
   const fetchPatients = useCallback(async () => {
     try {
       setLoading(true);
@@ -34,101 +32,93 @@ export default function DieticianDashboard() {
     fetchPatients();
   }, [fetchPatients]);
 
-  // FIX 2: Pinalitan ang 'any' ng 'Profile' type para sa filtering
-  const filteredPatients = patients.filter((p: Profile) => 
-    (p.name?.toLowerCase().includes(search.toLowerCase()) || false) || 
-    (p.email?.toLowerCase().includes(search.toLowerCase()) || false)
+  const filteredPatients = patients.filter(p => 
+    p.name.toLowerCase().includes(search.toLowerCase()) ||
+    p.email?.toLowerCase().includes(search.toLowerCase())
   );
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <div className="space-y-6">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold font-serif text-gray-900">Dietitian Portal</h1>
-          <p className="text-gray-500">Manage and monitor patient nutritional progress</p>
+          <h1 className="text-2xl font-bold text-gray-900">Patient Directory</h1>
+          <p className="text-gray-500">Monitor and manage your patients' progress</p>
         </div>
-        <div className="flex gap-4">
-          <div className="bg-white px-4 py-2 rounded-xl border border-gray-100 shadow-sm text-center">
-            <p className="text-[10px] uppercase font-bold text-gray-400">Total Patients</p>
-            <p className="text-xl font-bold text-primary">{patients.length}</p>
-          </div>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+          <input
+            type="text"
+            placeholder="Search patients..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-10 pr-4 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary w-full md:w-64"
+          />
         </div>
       </header>
 
-      <div className="relative">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-        <input
-          type="text"
-          placeholder="Search patients by name or email..."
-          className="w-full pl-12 pr-4 py-3 bg-white border rounded-2xl focus:ring-2 focus:ring-primary outline-none shadow-sm"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-      </div>
-
-      <div className="space-y-4">
-        {loading ? (
-          <div className="text-center py-10 text-gray-400">Loading patients...</div>
-        ) : filteredPatients.length === 0 ? (
-          <div className="text-center py-10 text-gray-400">No patients found.</div>
-        ) : filteredPatients.map((patient: Profile) => {
-          // FIX 3: Siguraduhing may default values para sa calculations
-          const bmi = patient.weight && patient.height ? calculateBMI(patient.weight, patient.height) : 0;
+      <div className="grid grid-cols-1 gap-4">
+        {filteredPatients.map((patient) => {
+          const bmi = patient.weight && patient.height ? calculateBMI(patient.weight, patient.height) : null;
+          const bmiCategory = bmi ? getBMICategory(bmi) : null;
           const target = calculateTargetCalories(patient);
           const isExpanded = expandedId === patient.id;
 
           return (
-            <div key={patient.id} className="bg-white rounded-2xl border shadow-sm overflow-hidden transition-all">
-              <div 
-                className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50"
+            <div key={patient.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden transition-all hover:shadow-md">
+              <button 
                 onClick={() => setExpandedId(isExpanded ? null : patient.id)}
+                className="w-full flex items-center justify-between p-4 text-left"
               >
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-primary-light rounded-full flex items-center justify-center text-primary font-bold text-lg">
-                    {patient.name ? patient.name[0] : 'U'}
+                  <div className="w-12 h-12 rounded-full bg-primary-light flex items-center justify-center text-primary font-bold text-lg">
+                    {patient.name[0]}
                   </div>
                   <div>
                     <h3 className="font-bold text-gray-900">{patient.name}</h3>
                     <p className="text-sm text-gray-500">{patient.email}</p>
                   </div>
                 </div>
-                
-                <div className="hidden md:flex gap-8">
-                  <div className="text-center">
-                    <p className="text-[10px] uppercase font-bold text-gray-400">BMI Status</p>
-                    <p className={`font-bold ${bmi > 25 ? 'text-orange-600' : 'text-green-600'}`}>
-                      {bmi > 0 ? `${bmi.toFixed(1)} (${getBMICategory(bmi)})` : '--'}
-                    </p>
+                <div className="flex items-center gap-4">
+                  <div className="hidden md:block text-right mr-4">
+                    <p className="text-xs text-gray-400 uppercase font-bold">Status</p>
+                    <span className="text-sm font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded">Active</span>
                   </div>
-                  <div className="text-center">
-                    <p className="text-[10px] uppercase font-bold text-gray-400">Goal</p>
-                    <p className="font-bold text-gray-700">{patient.goal || 'Not Set'}</p>
-                  </div>
+                  {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                 </div>
-
-                <div className="flex items-center gap-4" onClick={(e) => e.stopPropagation()}>
-                   <div className="flex gap-2">
-                      <Link to="/dietitian/notes" className="p-2 text-gray-400 hover:text-primary transition-colors">
-                        <MessageSquare size={20} />
-                      </Link>
-                      <Link to="/dietitian/assign" className="p-2 text-gray-400 hover:text-primary transition-colors">
-                        <ClipboardList size={20} />
-                      </Link>
-                   </div>
-                   <button onClick={() => setExpandedId(isExpanded ? null : patient.id)}>
-                    {isExpanded ? <ChevronUp className="text-gray-400" /> : <ChevronDown className="text-gray-400" />}
-                   </button>
-                </div>
-              </div>
+              </button>
 
               {isExpanded && (
-                <div className="px-4 pb-6 pt-2 border-t bg-gray-50/50">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4">
+                <div className="p-4 border-t border-gray-50 bg-gray-50/30">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                     <div className="space-y-3">
-                      <h4 className="text-xs font-bold text-gray-400 uppercase">Profile Details</h4>
-                      <p className="text-sm"><strong>Age/Gender:</strong> {patient.age || '--'} / {patient.gender || '--'}</p>
-                      <p className="text-sm"><strong>Height/Weight:</strong> {patient.height}cm / {patient.weight}kg</p>
-                      <p className="text-sm"><strong>Activity:</strong> {patient.activity_level}</p>
+                      <h4 className="text-xs font-bold text-gray-400 uppercase">Body Metrics</h4>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <p className="text-xs text-gray-500">Weight</p>
+                          <p className="font-bold">{patient.weight || '--'} kg</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500">Height</p>
+                          <p className="font-bold">{patient.height || '--'} cm</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-bold text-gray-400 uppercase">BMI Status</h4>
+                      <p className="font-bold text-lg">{bmi || '--'}</p>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
+                        bmiCategory === 'Normal' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
+                      }`}>
+                        {bmiCategory || 'No Data'}
+                      </span>
                     </div>
                     <div className="space-y-3">
                       <h4 className="text-xs font-bold text-gray-400 uppercase">Health Info</h4>
@@ -142,7 +132,7 @@ export default function DieticianDashboard() {
                         ) : <span className="text-sm text-gray-400">None</span>}
                       </div>
                     </div>
-                    <div className="flex flex-col justify-end">
+                    <div className="flex flex-col justify-end gap-2">
                       <Link 
                         to="/dietitian/progress" 
                         className="w-full bg-white border border-primary text-primary hover:bg-primary hover:text-white font-bold py-2 rounded-xl text-center transition-all text-sm"
