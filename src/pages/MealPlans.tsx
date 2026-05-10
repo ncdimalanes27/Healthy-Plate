@@ -34,7 +34,7 @@ export default function MealPlans({ profile }: { profile: Profile }) {
     try {
       const { data: foodData } = await supabase.from('foods').select('*');
       if (foodData) setFoods(foodData as Food[]);
-      const { data: plans } = await supabase.from('meal_plans').select('*').order('created_at', { ascending: false });
+      const { data: plans } = await supabase.from('meal_plans').select('*').eq('user_id', profile.id).order('created_at', { ascending: false });
       if (plans) setSavedPlans(plans as MealPlanRow[]);
     } catch (err) {
       console.error('Error fetching data:', err);
@@ -57,7 +57,7 @@ export default function MealPlans({ profile }: { profile: Profile }) {
     if (!currentPlan) return;
     try {
       const { error } = await supabase.from('meal_plans').insert({
-        patient_id: profile.id,
+        user_id: profile.id,
         name: `7-Day Plan (${new Date().toLocaleDateString('en-PH')})`,
         target_calories: target,
         days: currentPlan,

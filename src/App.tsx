@@ -147,7 +147,7 @@ export default function App() {
             <>
               <Route path="/dietitian/dashboard" element={<DieticianDashboard />} />
               <Route path="/dietitian/notes" element={<DieticianNotes />} />
-              <Route path="/dietitian/assign" element={<AssignMealPlan />} />
+              <Route path="/dietitian/assign" element={<AssignMealPlan profile={user} />} />
               <Route path="/dietitian/progress" element={<ProgressReport />} />
             </>
           ) : (

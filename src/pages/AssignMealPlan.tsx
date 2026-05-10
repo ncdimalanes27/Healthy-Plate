@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import type { Profile } from '../types';
 import { Send, Utensils, Target, Calendar, Sparkles, CheckCircle, AlertCircle } from 'lucide-react';
 
-export default function AssignMealPlan() {
+export default function AssignMealPlan({ profile }: { profile?: Profile | null }) {
   const [patients, setPatients] = useState<Profile[]>([]);
   const [selectedPatient, setSelectedPatient] = useState('');
   const [targetCalories, setTargetCalories] = useState('');
@@ -35,14 +35,17 @@ export default function AssignMealPlan() {
     }
     setLoading(true);
     try {
-      const { error } = await supabase.from('meal_plans').insert([{
+      const patient = patients.find(p => p.id === selectedPatient);
+      const { error } = await supabase.from('assigned_plans').insert([{
         patient_id: selectedPatient,
+        dietitian_id: profile?.id ?? null,
+        dietitian_name: profile?.name ?? 'Dietitian',
+        meal_plan_name: `Custom Plan for ${patient?.name ?? 'Patient'}`,
         target_calories: parseInt(targetCalories),
-        notes: notes,
-        assigned_at: new Date().toISOString(),
+        note: notes || null,
       }]);
       if (error) throw error;
-      showToast(`Meal plan assigned to ${patients.find(p => p.id === selectedPatient)?.name || 'patient'} successfully!`, 'success');
+      showToast(`Meal plan assigned to ${patient?.name || 'patient'} successfully!`, 'success');
       setTargetCalories('');
       setNotes('');
       setSelectedPatient('');

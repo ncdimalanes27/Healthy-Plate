@@ -42,10 +42,11 @@ export default function Dashboard({ profile }: { profile: Profile }) {
       setLoading(true);
       const today = new Date().toISOString().split('T')[0];
 
-      const [logsRes, notesRes, planRes] = await Promise.all([
+      const [logsRes, notesRes, myPlanRes, assignedPlanRes] = await Promise.all([
         supabase.from('daily_logs').select('*').eq('user_id', profile.id).eq('date', today),
         supabaseService.getPatientNotes(profile.id),
         supabaseService.getMealPlan(profile.id),
+        supabaseService.getAssignedPlan(profile.id),
       ]);
 
       if (logsRes.data) {
@@ -56,7 +57,8 @@ export default function Dashboard({ profile }: { profile: Profile }) {
         setTotalFat(Math.round(logs.reduce((s: number, r: any) => s + (r.total_fat || 0), 0) * 10) / 10);
       }
       if (notesRes.data) setNotes(notesRes.data);
-      if (planRes.data) setActivePlan(planRes.data);
+      if (assignedPlanRes.data) setActivePlan(assignedPlanRes.data);
+      else if (myPlanRes.data) setActivePlan(myPlanRes.data);
     } catch (err) {
       console.error('Dashboard fetch error:', err);
     } finally {

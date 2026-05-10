@@ -55,7 +55,7 @@ export const supabaseService = {
     try {
       const { data, error } = await supabase
         .from('daily_logs')
-        .select('*, foods(*)')
+        .select('*')
         .eq('user_id', userId)
         .eq('date', date)
         .order('id', { ascending: false });
@@ -71,7 +71,7 @@ export const supabaseService = {
     try {
       const { data, error } = await supabase
         .from('daily_logs')
-        .upsert(log, { onConflict: 'user_id, date' })
+        .insert([log])
         .select();
       if (error) throw error;
       return { data, error: null };
@@ -192,7 +192,7 @@ export const supabaseService = {
       const { data, error } = await supabase
         .from('meal_plans')
         .select('*')
-        .eq('patient_id', userId)
+        .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -204,10 +204,34 @@ export const supabaseService = {
     }
   },
 
-  async assignMealPlan(plan: Partial<MealPlan>) {
+  async getAssignedPlan(patientId: string) {
     try {
       const { data, error } = await supabase
-        .from('meal_plans')
+        .from('assigned_plans')
+        .select('*')
+        .eq('patient_id', patientId)
+        .order('assigned_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return { data, error: null };
+    } catch (error: any) {
+      console.error('Error in getAssignedPlan:', error.message);
+      return { data: null, error };
+    }
+  },
+
+  async assignMealPlan(plan: {
+    patient_id: string;
+    dietitian_id: string;
+    dietitian_name: string;
+    meal_plan_name: string;
+    target_calories: number;
+    note?: string;
+  }) {
+    try {
+      const { data, error } = await supabase
+        .from('assigned_plans')
         .insert([plan])
         .select();
       if (error) throw error;
