@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react';
-import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Outlet, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, User, Utensils, Activity, Settings, 
   LogOut, ClipboardList, TrendingUp, MessageSquare
@@ -12,9 +11,10 @@ interface LayoutProps {
 }
 
 export default function Layout({ user, onLogout }: LayoutProps) {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
   const isPatient = user?.role === 'patient';
+
+  // Inalis ang unused state (isMobileMenuOpen) at unused hooks (useEffect, useNavigate)
 
   const navItems = isPatient ? [
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
