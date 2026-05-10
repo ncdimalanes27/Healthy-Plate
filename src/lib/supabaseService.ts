@@ -1,7 +1,8 @@
 import { supabase } from './supabase';
-import type { Profile, DailyLog, Food, DieticianNote, MealPlan } from '../types';
+import type { Profile, DailyLog, Food, DieticianNote, MealPlan, HealthMetric } from '../types';
 
 export const supabaseService = {
+
   // --- Profile Operations ---
   async getProfile(userId: string) {
     try {
@@ -9,8 +10,7 @@ export const supabaseService = {
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .maybeSingle(); // Ginawa nating maybeSingle para hindi mag-error agad kung bago ang user
-
+        .maybeSingle();
       if (error) throw error;
       return { data: data as Profile, error: null };
     } catch (error: any) {
@@ -27,7 +27,6 @@ export const supabaseService = {
         .eq('id', userId)
         .select()
         .single();
-
       if (error) throw error;
       return { data: data as Profile, error: null };
     } catch (error: any) {
@@ -43,7 +42,6 @@ export const supabaseService = {
         .from('foods')
         .select('*')
         .order('name', { ascending: true });
-
       if (error) throw error;
       return { data: data as Food[], error: null };
     } catch (error: any) {
@@ -52,15 +50,15 @@ export const supabaseService = {
     }
   },
 
-  // --- Logging Operations ---
+  // --- Daily Log Operations ---
   async getTodayLog(userId: string, date: string) {
     try {
       const { data, error } = await supabase
         .from('daily_logs')
-        .select('*, foods(*)') // Sinama natin ang food details para sa history
+        .select('*, foods(*)')
         .eq('user_id', userId)
-        .eq('date', date);
-
+        .eq('date', date)
+        .order('id', { ascending: false });
       if (error) throw error;
       return { data: data as any[], error: null };
     } catch (error: any) {
@@ -75,12 +73,70 @@ export const supabaseService = {
         .from('daily_logs')
         .upsert(log, { onConflict: 'user_id, date' })
         .select();
-
       if (error) throw error;
       return { data, error: null };
     } catch (error: any) {
       console.error('Error in upsertDailyLog:', error.message);
       return { data: null, error };
+    }
+  },
+
+  async deleteLogEntry(id: string) {
+    try {
+      const { error } = await supabase.from('daily_logs').delete().eq('id', id);
+      if (error) throw error;
+      return { error: null };
+    } catch (error: any) {
+      console.error('Error in deleteLogEntry:', error.message);
+      return { error };
+    }
+  },
+
+  // --- Health Metrics ---
+  async addHealthMetric(metric: Partial<HealthMetric>) {
+    try {
+      const { data, error } = await supabase
+        .from('health_metrics')
+        .insert([metric])
+        .select();
+      if (error) throw error;
+      return { data: data as HealthMetric[], error: null };
+    } catch (error: any) {
+      console.error('Error in addHealthMetric:', error.message);
+      return { data: null, error };
+    }
+  },
+
+  async getHealthMetrics(userId: string, limit = 20) {
+    try {
+      const { data, error } = await supabase
+        .from('health_metrics')
+        .select('*')
+        .eq('user_id', userId)
+        .order('recorded_at', { ascending: false })
+        .limit(limit);
+      if (error) throw error;
+      return { data: data as HealthMetric[], error: null };
+    } catch (error: any) {
+      console.error('Error in getHealthMetrics:', error.message);
+      return { data: [], error };
+    }
+  },
+
+  // --- Patient Notes ---
+  async getPatientNotes(patientId: string) {
+    try {
+      const { data, error } = await supabase
+        .from('dietician_notes')
+        .select('*')
+        .eq('patient_id', patientId)
+        .order('created_at', { ascending: false })
+        .limit(10);
+      if (error) throw error;
+      return { data: data as DieticianNote[], error: null };
+    } catch (error: any) {
+      console.error('Error in getPatientNotes:', error.message);
+      return { data: [], error };
     }
   },
 
@@ -92,7 +148,6 @@ export const supabaseService = {
         .select('*')
         .eq('role', 'patient')
         .order('name', { ascending: true });
-
       if (error) throw error;
       return { data: data as Profile[], error: null };
     } catch (error: any) {
@@ -107,7 +162,6 @@ export const supabaseService = {
         .from('dietician_notes')
         .insert([note])
         .select();
-
       if (error) throw error;
       return { data, error: null };
     } catch (error: any) {
@@ -116,7 +170,23 @@ export const supabaseService = {
     }
   },
 
-  // --- Meal Plan Operations (Dagdag para sa Dashboard) ---
+  async getDietitianSentNotes(dietitianId: string) {
+    try {
+      const { data, error } = await supabase
+        .from('dietician_notes')
+        .select('*')
+        .eq('dietitian_id', dietitianId)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      return { data: data as DieticianNote[], error: null };
+    } catch (error: any) {
+      console.error('Error in getDietitianSentNotes:', error.message);
+      return { data: [], error };
+    }
+  },
+
+  // --- Meal Plan Operations ---
   async getMealPlan(userId: string) {
     try {
       const { data, error } = await supabase
@@ -126,7 +196,6 @@ export const supabaseService = {
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
-
       if (error) throw error;
       return { data: data as MealPlan, error: null };
     } catch (error: any) {
@@ -141,12 +210,11 @@ export const supabaseService = {
         .from('meal_plans')
         .insert([plan])
         .select();
-
       if (error) throw error;
       return { data, error: null };
     } catch (error: any) {
       console.error('Error in assignMealPlan:', error.message);
       return { data: null, error };
     }
-  }
+  },
 };

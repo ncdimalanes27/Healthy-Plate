@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Eye, EyeOff, Utensils, Lock, Mail, AlertCircle } from 'lucide-react';
@@ -9,37 +9,48 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    const saved = localStorage.getItem('hp_rm_email');
+    if (saved) setEmail(saved);
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    
+
     try {
-      // 1. Auth Sign In
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ 
-        email, 
-        password 
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
 
       if (authError) throw authError;
 
       if (authData.user) {
-        // 2. Fetch Profile with retry logic/error checking
+        if (rememberMe) {
+          localStorage.setItem('hp_rm', '1');
+          localStorage.setItem('hp_rm_email', email);
+        } else {
+          localStorage.removeItem('hp_rm');
+          localStorage.removeItem('hp_rm_email');
+        }
+        sessionStorage.setItem('hp_tab_active', '1');
+
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('role')
           .eq('id', authData.user.id)
-          .maybeSingle(); // Gumamit ng maybeSingle para hindi mag-throw ng error agad kung empty
+          .maybeSingle();
 
         if (profileError) throw profileError;
 
-        // 3. Smart Redirection
         if (!profile) {
-          // Kung walang profile record pero naka-auth, posibleng bago lang o may system delay
-          navigate('/dashboard'); 
+          navigate('/dashboard');
           return;
         }
 
@@ -51,7 +62,6 @@ export default function Login() {
       }
     } catch (err: any) {
       console.error('Login error:', err);
-      // Mas user-friendly na error messages
       if (err.message === 'Invalid login credentials') {
         setError('Maling email o password. Pakisuri muli.');
       } else {
@@ -64,11 +74,10 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6 bg-[#f8fafc] relative overflow-hidden">
-      {/* Decorative Background Blur */}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/10 rounded-full blur-[120px]"></div>
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-emerald-500/10 rounded-full blur-[120px]"></div>
 
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="max-w-md w-full"
@@ -87,7 +96,7 @@ export default function Login() {
           </div>
 
           {error && (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               className="bg-red-50 text-red-600 p-4 rounded-2xl text-xs font-bold mb-8 border border-red-100 flex items-center gap-3"
@@ -139,10 +148,35 @@ export default function Login() {
               </div>
             </div>
 
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-3 cursor-pointer select-none group">
+                <div
+                  onClick={() => setRememberMe(!rememberMe)}
+                  className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
+                    rememberMe
+                      ? 'bg-primary border-primary'
+                      : 'bg-white border-slate-300 group-hover:border-primary/50'
+                  }`}
+                >
+                  {rememberMe && (
+                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </div>
+                <span className="text-xs font-bold text-slate-500 group-hover:text-slate-700 transition-colors">
+                  Remember Me
+                </span>
+              </label>
+              <span className="text-[10px] text-slate-400 font-semibold">
+                {rememberMe ? 'Stay signed in' : 'Sign out on close'}
+              </span>
+            </div>
+
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-primary hover:bg-emerald-600 text-white font-black py-4 rounded-2xl transition-all shadow-xl shadow-primary/30 disabled:opacity-50 active:scale-[0.98] uppercase text-xs tracking-widest mt-4"
+              className="w-full bg-primary hover:bg-emerald-600 text-white font-black py-4 rounded-2xl transition-all shadow-xl shadow-primary/30 disabled:opacity-50 active:scale-[0.98] uppercase text-xs tracking-widest mt-2"
             >
               {loading ? (
                 <div className="flex items-center justify-center gap-2">

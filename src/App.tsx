@@ -4,7 +4,6 @@ import { supabase } from './lib/supabase';
 import { supabaseService } from './lib/supabaseService';
 import type { Profile } from './types';
 
-// Layout & Pages
 import Layout from './components/layout/Layout';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -24,60 +23,65 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const isMounted = useRef(true);
 
-  // Stable reference para sa profile fetching
   const fetchProfile = useCallback(async (userId: string) => {
     try {
-      // Check Cache muna para instant UI update
       const cached = localStorage.getItem(`hp_u_${userId}`);
       if (cached && isMounted.current) {
         setUser(JSON.parse(cached));
+        setLoading(false);
       }
-
       const { data, error } = await supabaseService.getProfile(userId);
-      
       if (error) throw error;
-
       if (data && isMounted.current) {
         setUser(data);
         localStorage.setItem(`hp_u_${userId}`, JSON.stringify(data));
       }
     } catch (err) {
-      console.error("Profile sync error:", err);
+      console.error('Profile sync error:', err);
     } finally {
-      if (isMounted.current) {
-        setLoading(false);
-      }
+      if (isMounted.current) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     isMounted.current = true;
+    const safetyTimer = setTimeout(() => {
+      if (isMounted.current) setLoading(false);
+    }, 8000);
 
     const initAuth = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
+          const rememberMe = localStorage.getItem('hp_rm');
+          const tabActive = sessionStorage.getItem('hp_tab_active');
+          if (!rememberMe && !tabActive) {
+            await supabase.auth.signOut();
+            if (isMounted.current) setLoading(false);
+            return;
+          }
+          sessionStorage.setItem('hp_tab_active', '1');
           await fetchProfile(session.user.id);
         } else {
           if (isMounted.current) setLoading(false);
         }
-      } catch (err) {
+      } catch {
         if (isMounted.current) setLoading(false);
+      } finally {
+        clearTimeout(safetyTimer);
       }
     };
-
     initAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
-        setLoading(true); // Re-trigger loading para sa profile fetch
+        setLoading(true);
         await fetchProfile(session.user.id);
       } else if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
         setUser(null);
         localStorage.clear();
         if (isMounted.current) setLoading(false);
       } else if (event === 'TOKEN_REFRESHED' && session?.user) {
-        // Silent update ng profile kung kailangan
         fetchProfile(session.user.id);
       }
     });
@@ -85,6 +89,7 @@ export default function App() {
     return () => {
       isMounted.current = false;
       subscription.unsubscribe();
+      clearTimeout(safetyTimer);
     };
   }, [fetchProfile]);
 
@@ -95,13 +100,12 @@ export default function App() {
       setUser(null);
       localStorage.clear();
     } catch (err) {
-      console.error("Logout failed:", err);
+      console.error('Logout failed:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  // Loading Screen Component
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50">
@@ -119,22 +123,22 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Auth Routes: Only accessible if NOT logged in */}
-        <Route 
-          path="/login" 
-          element={!user ? <Login /> : <Navigate to="/" replace />} 
-        />
-        <Route 
-          path="/register" 
-          element={!user ? <Register /> : <Navigate to="/" replace />} 
-        />
+        <Route path="/login" element={!user ? <Login /> : <Navigate to="/" replace />} />
+        <Route path="/register" element={!user ? <Register /> : <Navigate to="/" replace />} />
 
-        {/* Protected Application Shell */}
         <Route element={<Layout user={user} onLogout={handleLogout} />}>
           {user?.role === 'patient' ? (
             <>
               <Route path="/dashboard" element={<Dashboard profile={user} />} />
-              <Route path="/profile" element={<ProfilePage profile={user} />} />
+              <Route
+                path="/profile"
+                element={
+                  <ProfilePage
+                    profile={user}
+                    onProfileUpdate={() => user && fetchProfile(user.id)}
+                  />
+                }
+              />
               <Route path="/food-log" element={<FoodLog profile={user} />} />
               <Route path="/meal-plans" element={<MealPlans profile={user} />} />
               <Route path="/monitoring" element={<HealthMonitoring profile={user} />} />
@@ -147,24 +151,20 @@ export default function App() {
               <Route path="/dietitian/progress" element={<ProgressReport />} />
             </>
           ) : (
-            // If user is logged in but role is missing/invalid
             <Route path="*" element={<Navigate to="/login" replace />} />
           )}
-          
-          {/* Shared Routes */}
           <Route path="/settings" element={<Settings profile={user} onLogout={handleLogout} />} />
         </Route>
 
-        {/* Root & Catch-all Redirect Logic */}
-        <Route 
-          path="/" 
+        <Route
+          path="/"
           element={
             user ? (
               <Navigate to={user.role === 'dietitian' ? '/dietitian/dashboard' : '/dashboard'} replace />
             ) : (
               <Navigate to="/login" replace />
             )
-          } 
+          }
         />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

@@ -1,8 +1,8 @@
-/* 1. Import Tailwind v4 */
-@import "tailwindcss";
-
-/* 2. Import Modern Font (Plus Jakarta Sans) */
+/* 1. Import Modern Font (Plus Jakarta Sans) - must come first */
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+/* 2. Import Tailwind v4 */
+@import "tailwindcss";
 
 /* 3. Theme Customization (Tailwind v4 way) */
 @theme {

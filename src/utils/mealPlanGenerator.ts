@@ -11,9 +11,12 @@ export const generate7DayMealPlan = (targetCalories: number, allFoods: Food[]) =
     const snackTarget = targetCalories * 0.10;
 
     const findFood = (target: number, categoryHint?: string) => {
-      const candidates = allFoods.filter(f => 
+      let candidates = allFoods.filter(f => 
         categoryHint ? f.category === categoryHint : true
       );
+      // Fall back to all foods if no category match
+      if (candidates.length === 0) candidates = allFoods;
+      if (candidates.length === 0) return null;
       // Find food closest to target calories
       return candidates.reduce((prev, curr) => 
         Math.abs(curr.calories - target) < Math.abs(prev.calories - target) ? curr : prev

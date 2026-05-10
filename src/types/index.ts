@@ -1,5 +1,3 @@
-// src/types/index.ts
-
 export type UserRole = 'patient' | 'dietitian';
 
 export interface Profile {
@@ -34,6 +32,9 @@ export interface Food {
 export interface DailyLog {
   id: string;
   user_id: string;
+  food_id?: string;
+  meal_type?: 'breakfast' | 'lunch' | 'dinner' | 'snack';
+  servings?: number;
   date: string;
   total_calories: number;
   total_protein: number;
@@ -45,30 +46,33 @@ export interface DailyLog {
   blood_pressure_diastolic?: number;
 }
 
-// --- ETO YUNG MGA DAGDAG PARA MAWALA ANG ERRORS ---
-
 export interface DieticianNote {
   id: string;
   dietitian_id: string;
   patient_id: string;
   content: string;
+  category?: string;
   created_at: string;
-  // Optional: para sa UI labeling
-  dietitian_name?: string; 
+  dietitian_name?: string;
 }
 
 export interface MealPlan {
   id: string;
   patient_id: string;
   dietitian_id?: string;
-  title: string;
-  description: string;
-  calories_target: number;
+  name?: string;
+  title?: string;
+  description?: string;
+  notes?: string;
+  target_calories?: number;
+  calories_target?: number;
   carbs_target?: number;
   protein_target?: number;
   fat_target?: number;
-  status: 'active' | 'archived';
+  days?: any[];
+  status?: 'active' | 'archived';
   created_at: string;
+  assigned_at?: string;
 }
 
 export interface FoodLogEntry {
@@ -78,8 +82,7 @@ export interface FoodLogEntry {
   meal_type: 'breakfast' | 'lunch' | 'dinner' | 'snack';
   servings: number;
   logged_at: string;
-  // Joined data mula sa Food table
-  food?: Food; 
+  food?: Food;
 }
 
 export interface HealthMetric {
@@ -87,7 +90,7 @@ export interface HealthMetric {
   user_id: string;
   type: 'weight' | 'blood_sugar' | 'blood_pressure';
   value_primary: number;
-  value_secondary?: number; // Para sa diastolic ng blood pressure
+  value_secondary?: number;
   unit: string;
   recorded_at: string;
 }
