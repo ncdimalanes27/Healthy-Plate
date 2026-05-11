@@ -18,22 +18,24 @@ import DieticianNotes from './pages/DieticianNotes';
 import AssignMealPlan from './pages/AssignMealPlan';
 import ProgressReport from './pages/ProgressReport';
 
+function loadCachedUser(): Profile | null {
+  try {
+    const key = Object.keys(localStorage).find(k => k.startsWith('hp_u_'));
+    return key ? (JSON.parse(localStorage.getItem(key)!) as Profile) : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function App() {
-  const [user, setUser] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const cached = loadCachedUser();
+  const [user, setUser] = useState<Profile | null>(cached);
+  const [loading, setLoading] = useState(cached === null);
   const isMounted = useRef(true);
-  const initDone = useRef(false);
+  const signingOut = useRef(false);
 
-  const fetchProfile = useCallback(async (userId: string, showSpinner = false) => {
+  const fetchProfile = useCallback(async (userId: string) => {
     try {
-      if (showSpinner && isMounted.current) setLoading(true);
-
-      const cached = localStorage.getItem(`hp_u_${userId}`);
-      if (cached && isMounted.current) {
-        setUser(JSON.parse(cached));
-        if (isMounted.current) setLoading(false);
-      }
-
       const { data, error } = await supabaseService.getProfile(userId);
       if (error) throw error;
       if (data && isMounted.current) {
@@ -49,54 +51,46 @@ export default function App() {
 
   useEffect(() => {
     isMounted.current = true;
+    signingOut.current = false;
 
     const safetyTimer = setTimeout(() => {
       if (isMounted.current) setLoading(false);
-    }, 8000);
+    }, 6000);
 
-    const initAuth = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          const rememberMe = localStorage.getItem('hp_rm');
-          const tabActive = sessionStorage.getItem('hp_tab_active');
-          if (!rememberMe && !tabActive) {
-            await supabase.auth.signOut();
-            if (isMounted.current) setLoading(false);
-            return;
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (signingOut.current) return;
+
+        if (event === 'INITIAL_SESSION') {
+          if (session?.user) {
+            const rememberMe = localStorage.getItem('hp_rm');
+            const tabActive = sessionStorage.getItem('hp_tab_active');
+            if (!rememberMe && !tabActive) {
+              signingOut.current = true;
+              await supabase.auth.signOut();
+              signingOut.current = false;
+              if (isMounted.current) { setUser(null); setLoading(false); }
+              return;
+            }
+            sessionStorage.setItem('hp_tab_active', '1');
+            await fetchProfile(session.user.id);
+          } else {
+            if (isMounted.current) { setUser(null); setLoading(false); }
           }
+          clearTimeout(safetyTimer);
+
+        } else if (event === 'SIGNED_IN' && session?.user) {
           sessionStorage.setItem('hp_tab_active', '1');
-          await fetchProfile(session.user.id, false);
-        } else {
-          if (isMounted.current) setLoading(false);
-        }
-      } catch {
-        if (isMounted.current) setLoading(false);
-      } finally {
-        clearTimeout(safetyTimer);
-        initDone.current = true;
-      }
-    };
+          fetchProfile(session.user.id);
 
-    initAuth();
+        } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+          fetchProfile(session.user.id);
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
-        if (!initDone.current) {
-          await fetchProfile(session.user.id, false);
-        } else {
-          fetchProfile(session.user.id, false);
+        } else if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
+          if (isMounted.current) { setUser(null); setLoading(false); }
         }
-      } else if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
-        if (isMounted.current) {
-          setUser(null);
-          localStorage.clear();
-          setLoading(false);
-        }
-      } else if (event === 'TOKEN_REFRESHED' && session?.user) {
-        fetchProfile(session.user.id, false);
       }
-    });
+    );
 
     return () => {
       isMounted.current = false;
@@ -106,13 +100,17 @@ export default function App() {
   }, [fetchProfile]);
 
   const handleLogout = async () => {
+    signingOut.current = true;
+    setUser(null);
+    localStorage.clear();
+    sessionStorage.clear();
     try {
       await supabase.auth.signOut();
-      setUser(null);
-      localStorage.clear();
-      sessionStorage.clear();
     } catch (err) {
-      console.error('Logout failed:', err);
+      console.error('Logout error:', err);
+    } finally {
+      signingOut.current = false;
+      if (isMounted.current) setLoading(false);
     }
   };
 
@@ -145,7 +143,7 @@ export default function App() {
                 element={
                   <ProfilePage
                     profile={user}
-                    onProfileUpdate={() => user && fetchProfile(user.id, false)}
+                    onProfileUpdate={() => user && fetchProfile(user.id)}
                   />
                 }
               />
